@@ -88,7 +88,7 @@
                 </div>
             </div>
 
-            <input type="file" id="fileInput" accept="image/*" onchange="handleImageUpload(event)">
+            <input type="file" id="fileInput" accept="image/*" capture="user" onchange="handleImageUpload(event)">
 
             <button onclick="startRoast()" id="roast-btn" class="w-full bg-gradient-to-r from-pink-600 to-purple-600 text-white font-bold py-4 rounded-xl text-xl shadow-lg transform active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                 ROAST ME 🔥
