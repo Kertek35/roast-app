@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RoastMe AI - Brutal Judge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;700&display=swap');
+        
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            overscroll-behavior: none;
+        }
+
+        .gradient-text {
+            background: linear-gradient(to right, #f472b6, #a78bfa, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #f472b6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .score-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: conic-gradient(#f472b6 var(--score-percent), #334155 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .score-inner {
+            width: 100px;
+            height: 100px;
+            background: #0f172a;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center p-4 overflow-hidden">
+
+    <!-- Screen 1: Home -->
+    <div id="screen-home" class="w-full max-w-md flex flex-col items-center space-y-8 animate-fade-in">
+        <div class="text-center space-y-2">
+            <h1 class="text-5xl font-bold gradient-text">RoastMe AI</h1>
+            <p class="text-gray-400 text-lg">Get brutally judged by AI.</p>
+            <span class="text-xs text-red-400 bg-red-900/30 px-3 py-1 rounded-full border border-red-900/50">⚠️ Emotional Damage Warning</span>
+        </div>
+
+        <div class="glass-panel p-8 rounded-2xl w-full flex flex-col items-center space-y-6 shadow-2xl">
+            <div class="w-full h-64 border-2 border-dashed border-gray-600 rounded-xl flex items-center justify-center bg-gray-800/50 relative overflow-hidden group hover:border-pink-500 transition-colors cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                <img id="preview-image" class="absolute inset-0 w-full h-full object-cover hidden" alt="Preview">
+                <div id="upload-placeholder" class="text-center p-4">
+                    <i class="fas fa-camera text-4xl text-gray-400 mb-2 group-hover:text-pink-500 transition-colors"></i>
+                    <p class="text-sm text-gray-400">Tap to upload selfie</p>
+                </div>
+            </div>
+
+            <input type="file" id="fileInput" accept="image/*" onchange="handleImageUpload(event)">
+
+            <button onclick="startRoast()" id="roast-btn" class="w-full bg-gradient-to-r from-pink-600 to-purple-600 text-white font-bold py-4 rounded-xl text-xl shadow-lg transform active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                ROAST ME 🔥
+            </button>
+            <p class="text-xs text-gray-500 text-center">By continuing, you agree to be roasted.</p>
+        </div>
+    </div>
+
+    <!-- Screen 2: Loading -->
+    <div id="screen-loading" class="hidden w-full max-w-md flex-col items-center justify-center space-y-6 text-center">
+        <div class="loader w-16 h-16 border-t-pink-500"></div>
+        <div class="space-y-2">
+            <h2 class="text-2xl font-bold text-white" id="loading-text">Scanning face...</h2>
+            <p class="text-gray-400 text-sm">Please wait while I judge you.</p>
+        </div>
+    </div>
+
+    <!-- Screen 3: Result -->
+    <div id="screen-result" class="hidden w-full max-w-md flex-col items-center space-y-6 animate-fade-in h-full overflow-y-auto py-4">
+        <div class="w-full flex justify-between items-center mb-2">
+            <button onclick="resetApp()" class="text-gray-400 hover:text-white"><i class="fas fa-arrow-left"></i> Try Again</button>
+            <span class="text-xs font-bold text-pink-500">AI VERDICT</span>
+        </div>
+
+        <div class="glass-panel p-6 rounded-2xl w-full shadow-2xl space-y-6 relative overflow-hidden">
+            <!-- Score Badge -->
+            <div class="absolute top-4 right-4 bg-gray-800/80 px-3 py-1 rounded-full text-xs border border-gray-700">
+                AI Confidence: 99%
+            </div>
+
+            <div class="flex items-center space-x-6">
+                <div class="score-circle" id="score-circle">
+                    <div class="score-inner">
+                        <span class="text-3xl font-bold text-white" id="score-value">0.0</span>
+                        <span class="text-[10px] text-gray-400 uppercase tracking-widest">Score</span>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-xl font-bold text-white mb-1">Look Analysis</h3>
+                    <div class="h-2 bg-gray-700 rounded-full overflow-hidden mb-2">
+                        <div id="bar-attractiveness" class="h-full bg-pink-500 w-0 transition-all duration-1000"></div>
+                    </div>
+                    <p class="text-xs text-gray-400">Based on global standards</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="bg-red-500/10 border border-red-500/30 p-4 rounded-xl">
+                    <h4 class="text-red-400 text-xs font-bold uppercase mb-2"><i class="fas fa-fire mr-1"></i> The Roast</h4>
+                    <p id="roast-text" class="text-lg text-white font-medium leading-relaxed"></p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-gray-800/50 p-3 rounded-xl border border-gray-700/50">
+                        <h5 class="text-purple-400 text-[10px] font-bold uppercase mb-1">Personality</h5>
+                        <p id="personality-text" class="text-sm text-gray-300"></p>
+                    </div>
+                    <div class="bg-gray-800/50 p-3 rounded-xl border border-gray-700/50">
+                        <h5 class="text-green-400 text-[10px] font-bold uppercase mb-1">Dating Odds</h5>
+                        <p id="dating-text" class="text-sm text-gray-300"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="shareResult()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                <i class="fas fa-share-alt"></i> Share This Disaster
+            </button>
+        </div>
+        
+        <!-- Ad Placeholder -->
+        <div class="w-full h-16 bg-gray-800/50 border border-gray-700 border-dashed rounded-lg flex items-center justify-center text-gray-500 text-xs uppercase tracking-widest">
+            Ad Space (Make Money Here)
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION - OpenAI API
+        const OPENAI_API_KEY = "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"; 
+        
+        let currentImageBase64 = null;
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImageBase64 = e.target.result.split(',')[1]; // Remove data:image/...;base64,
+                const preview = document.getElementById('preview-image');
+                preview.src = e.target.result;
+                preview.classList.remove('hidden');
+                document.getElementById('upload-placeholder').classList.add('hidden');
+                document.getElementById('roast-btn').disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function startRoast() {
+            if (!currentImageBase64) return;
+
+            // Switch screens
+            document.getElementById('screen-home').classList.add('hidden');
+            document.getElementById('screen-loading').classList.remove('hidden');
+            document.getElementById('screen-loading').classList.add('flex');
+
+            // Loading animation texts
+            const loadingTexts = [
+                "Scanning facial symmetry...",
+                "Calculating rizz levels...",
+                "Consulting the roast gods...",
+                "Preparing emotional damage..."
+            ];
+            let textIdx = 0;
+            const textInterval = setInterval(() => {
+                document.getElementById('loading-text').innerText = loadingTexts[textIdx % loadingTexts.length];
+                textIdx++;
+            }, 1500);
+
+            try {
+                const result = await callOpenAIAPI(currentImageBase64);
+                
+                clearInterval(textInterval);
+                displayResult(result);
+            } catch (error) {
+                clearInterval(textInterval);
+                alert("Error: " + error.message);
+                resetApp();
+            }
+        }
+
+        async function callOpenAIAPI(imageBase64) {
+            const url = "https://api.openai.com/v1/chat/completions";
+            
+            const prompt = `
+                Analyze this image as a fictional character for a comedy roast show. 
+                Be witty, playful, and teasing in a lighthearted way (like a friendly roast).
+                Focus on fashion choices, expression, and vibe.
+                Do not be mean-spirited or harmful. Be funny.
+                
+                Return a JSON object with these EXACT keys:
+                {
+                    "score": (number 1-10, e.g. 4.2),
+                    "roast": (string, max 2 sentences, funny observation about their vibe/look),
+                    "personality": (string, 1 short sentence guess),
+                    "dating_odds": (string, e.g. "Single forever" or "Player", keep it short)
+                }
+                Do not include markdown formatting like \`\`\`json. Just the raw JSON.
+            `;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${OPENAI_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o",
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                { type: "text", text: prompt },
+                                {
+                                    type: "image_url",
+                                    image_url: {
+                                        url: `data:image/jpeg;base64,${imageBase64}`
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    max_tokens: 300
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.error) throw new Error(data.error.message);
+            
+            // OpenAI returns a string content, parse it
+            let content = data.choices[0].message.content;
+            content = content.replace(/```json/g, '').replace(/```/g, '').trim();
+            return JSON.parse(content);
+        }
+
+        function displayResult(data) {
+            document.getElementById('screen-loading').classList.add('hidden');
+            document.getElementById('screen-loading').classList.remove('flex');
+            document.getElementById('screen-result').classList.remove('hidden');
+            document.getElementById('screen-result').classList.add('flex');
+
+            // Animate Score
+            const score = parseFloat(data.score);
+            const percentage = (score / 10) * 100;
+            
+            document.getElementById('score-value').innerText = score.toFixed(1);
+            document.getElementById('score-circle').style.setProperty('--score-percent', `${percentage}%`);
+            document.getElementById('bar-attractiveness').style.width = `${percentage}%`;
+
+            // Texts
+            document.getElementById('roast-text').innerText = data.roast;
+            document.getElementById('personality-text').innerText = data.personality;
+            document.getElementById('dating-text').innerText = data.dating_odds;
+        }
+
+        function resetApp() {
+            currentImageBase64 = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('preview-image').classList.add('hidden');
+            document.getElementById('upload-placeholder').classList.remove('hidden');
+            document.getElementById('roast-btn').disabled = true;
+            
+            document.getElementById('screen-result').classList.add('hidden');
+            document.getElementById('screen-result').classList.remove('flex');
+            document.getElementById('screen-loading').classList.add('hidden');
+            document.getElementById('screen-loading').classList.remove('flex');
+            document.getElementById('screen-home').classList.remove('hidden');
+        }
+
+        function shareResult() {
+            const roast = document.getElementById('roast-text').innerText;
+            const score = document.getElementById('score-value').innerText;
+            const text = `AI gave me a ${score}/10 and said: "${roast}" 💀 Judge yourself at RoastMe AI!`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'RoastMe AI Result',
+                    text: text,
+                    url: window.location.href
+                });
+            } else {
+                // Fallback
+                navigator.clipboard.writeText(text);
+                alert("Result copied to clipboard!");
+            }
+        }
+    </script>
+</body>
+</html>
